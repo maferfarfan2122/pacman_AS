@@ -1,7 +1,7 @@
 """
-myTeam.py - Test Run 11 Marzo 2026
-Equipo: pacmanAS
-Basado en conceptos de Problem Set 4: A*, heuristics, planning
+pacman_AS.py - Test Run March 11, 2026
+Team: pacmanAS
+Based on Problem Set 4 concepts: A*, heuristics, planning
 """
 
 from contest.capture_agents import CaptureAgent
@@ -10,39 +10,39 @@ import random
 def create_team(first_index, second_index, is_red,
                 first='AgenteOfensivo', second='AgenteDefensivo'):
     """
-    Factory function requerida.
-    Retorna lista con 2 agentes: ofensivo y defensivo.
+    Required factory function.
+    Returns list with 2 agents: offensive and defensive.
     """
     return [eval(first)(first_index), eval(second)(second_index)]
 
 
 class AgenteOfensivo(CaptureAgent):
     """
-    AGENTE OFENSIVO: Captura comida enemiga
-    Estados: ATACAR → REGRESAR → ESCAPAR
+    OFFENSIVE AGENT: Captures enemy food
+    States: ATTACK → RETURN → ESCAPE
     """
     
     def register_initial_state(self, game_state):
-        """Inicialización (max 15 segundos)"""
+        """Initialization (max 15 seconds)"""
         CaptureAgent.register_initial_state(self, game_state)
         self.start = game_state.get_agent_position(self.index)
         
-        # Calcular frontera (mitad del mapa)
+        # Calculate frontier (map midline)
         if self.red:
             self.frontera_x = game_state.data.layout.width // 2 - 1
         else:
             self.frontera_x = game_state.data.layout.width // 2
         
-        print(f"[OFENSIVO {self.index}] Listo en {self.start}")
+        print(f"[OFFENSIVE {self.index}] Ready at {self.start}")
     
     def choose_action(self, game_state):
-        """Decisión de acción (max 1 segundo)"""
+        """Action decision (max 1 second)"""
         try:
             mi_estado = game_state.get_agent_state(self.index)
             mi_pos = mi_estado.get_position()
             comida_llevando = mi_estado.num_carrying
             
-            # Obtener acciones legales
+            # Get legal actions
             acciones = game_state.get_legal_actions(self.index)
             if 'Stop' in acciones:
                 acciones.remove('Stop')
@@ -50,38 +50,38 @@ class AgenteOfensivo(CaptureAgent):
             if not acciones:
                 return 'Stop'
             
-            # Detectar fantasmas enemigos
+            # Detect enemy ghosts
             enemigos = [game_state.get_agent_state(i) for i in self.get_opponents(game_state)]
             fantasmas = [e for e in enemigos if not e.is_pacman and e.get_position() is not None]
             
-            # DECISIÓN: ¿Qué hacer?
+            # DECISION: What to do?
             if fantasmas:
                 dist_min_fantasma = min(self.get_maze_distance(mi_pos, f.get_position()) for f in fantasmas)
                 
-                # ESCAPAR si fantasma muy cerca
+                # ESCAPE if ghost very close
                 if dist_min_fantasma <= 3:
                     return self.escapar(game_state, acciones, fantasmas)
             
-            # REGRESAR si llevas 5+ comida
+            # RETURN if carrying 5+ food
             if comida_llevando >= 5:
                 return self.regresar(game_state, acciones)
             
-            # ATACAR por defecto
+            # ATTACK by default
             return self.atacar(game_state, acciones)
         
         except Exception as e:
-            print(f"ERROR ofensivo: {e}")
+            print(f"ERROR offensive: {e}")
             return random.choice(acciones) if acciones else 'Stop'
     
     def atacar(self, game_state, acciones):
-        """Buscar comida más cercana (A* simplificado)"""
+        """Find nearest food (simplified A*)"""
         mi_pos = game_state.get_agent_state(self.index).get_position()
         comida = self.get_food(game_state).as_list()
         
         if not comida:
             return random.choice(acciones)
         
-        # Evaluar cada acción
+        # Evaluate each action
         mejor_accion = None
         mejor_dist = float('inf')
         
@@ -89,7 +89,7 @@ class AgenteOfensivo(CaptureAgent):
             sucesor = self.get_successor(game_state, accion)
             pos_sig = sucesor.get_agent_state(self.index).get_position()
             
-            # Heurística: distancia a comida más cercana
+            # Heuristic: distance to nearest food
             dist = min(self.get_maze_distance(pos_sig, c) for c in comida)
             
             if dist < mejor_dist:
@@ -99,18 +99,18 @@ class AgenteOfensivo(CaptureAgent):
         return mejor_accion if mejor_accion else random.choice(acciones)
     
     def regresar(self, game_state, acciones):
-        """Regresar a casa para depositar comida"""
+        """Return home to deposit food"""
         mi_pos = game_state.get_agent_state(self.index).get_position()
         walls = game_state.get_walls()
         altura = walls.height
         
-        # Puntos de frontera (territorio propio)
+        # Frontier points (home territory)
         frontera = [(self.frontera_x, y) for y in range(altura) if not walls[self.frontera_x][y]]
         
         if not frontera:
             return random.choice(acciones)
         
-        # Ir al punto de frontera más cercano
+        # Go to nearest frontier point
         mejor_accion = None
         mejor_dist = float('inf')
         
@@ -127,7 +127,7 @@ class AgenteOfensivo(CaptureAgent):
         return mejor_accion if mejor_accion else random.choice(acciones)
     
     def escapar(self, game_state, acciones, fantasmas):
-        """Maximizar distancia a fantasmas"""
+        """Maximize distance from ghosts"""
         mejor_accion = None
         mejor_dist = -1
         
@@ -135,7 +135,7 @@ class AgenteOfensivo(CaptureAgent):
             sucesor = self.get_successor(game_state, accion)
             pos_sig = sucesor.get_agent_state(self.index).get_position()
             
-            # Distancia mínima a fantasmas
+            # Minimum distance to ghosts
             dist_min = min(self.get_maze_distance(pos_sig, f.get_position()) for f in fantasmas)
             
             if dist_min > mejor_dist:
@@ -145,22 +145,22 @@ class AgenteOfensivo(CaptureAgent):
         return mejor_accion if mejor_accion else random.choice(acciones)
     
     def get_successor(self, game_state, action):
-        """Helper: generar sucesor"""
+        """Helper: generate successor state"""
         return game_state.generate_successor(self.index, action)
 
 
 class AgenteDefensivo(CaptureAgent):
     """
-    AGENTE DEFENSIVO: Protege territorio
-    Estados: PATRULLAR → PERSEGUIR
+    DEFENSIVE AGENT: Protects territory
+    States: PATROL → PURSUE
     """
     
     def register_initial_state(self, game_state):
-        """Inicialización"""
+        """Initialization"""
         CaptureAgent.register_initial_state(self, game_state)
         self.start = game_state.get_agent_position(self.index)
         
-        # Calcular puntos de patrulla
+        # Calculate patrol points
         comida = self.get_food_you_are_defending(game_state).as_list()
         if comida:
             comida_sorted = sorted(comida, key=lambda c: c[1])
@@ -173,14 +173,14 @@ class AgenteDefensivo(CaptureAgent):
             self.patrulla = [self.start]
         
         self.idx_patrulla = 0
-        print(f"[DEFENSIVO {self.index}] Patrulla: {len(self.patrulla)} puntos")
+        print(f"[DEFENSIVE {self.index}] Patrol: {len(self.patrulla)} points")
     
     def choose_action(self, game_state):
-        """Decisión defensiva"""
+        """Defensive decision"""
         try:
             mi_pos = game_state.get_agent_state(self.index).get_position()
             
-            # Detectar invasores
+            # Detect invaders
             enemigos = [game_state.get_agent_state(i) for i in self.get_opponents(game_state)]
             invasores = [e for e in enemigos if e.is_pacman and e.get_position() is not None]
             
@@ -191,25 +191,25 @@ class AgenteDefensivo(CaptureAgent):
             if not acciones:
                 return 'Stop'
             
-            # PERSEGUIR si hay invasor visible
+            # PURSUE if invader visible
             if invasores:
                 return self.perseguir(game_state, acciones, invasores)
             
-            # PATRULLAR por defecto
+            # PATROL by default
             return self.patrullar(game_state, acciones)
         
         except Exception as e:
-            print(f"ERROR defensivo: {e}")
+            print(f"ERROR defensive: {e}")
             return random.choice(acciones) if acciones else 'Stop'
     
     def perseguir(self, game_state, acciones, invasores):
-        """Perseguir invasor más cercano"""
+        """Pursue nearest invader"""
         mi_pos = game_state.get_agent_state(self.index).get_position()
         
-        # Invasor más cercano
+        # Nearest invader
         objetivo = min(invasores, key=lambda i: self.get_maze_distance(mi_pos, i.get_position()))
         
-        # Acción que acerca más
+        # Action that gets closer
         mejor_accion = None
         mejor_dist = float('inf')
         
@@ -226,16 +226,16 @@ class AgenteDefensivo(CaptureAgent):
         return mejor_accion if mejor_accion else random.choice(acciones)
     
     def patrullar(self, game_state, acciones):
-        """Ciclar entre puntos de patrulla"""
+        """Cycle through patrol points"""
         mi_pos = game_state.get_agent_state(self.index).get_position()
         objetivo = self.patrulla[self.idx_patrulla]
         
-        # Cambiar objetivo si llegamos
+        # Change target if arrived
         if self.get_maze_distance(mi_pos, objetivo) <= 2:
             self.idx_patrulla = (self.idx_patrulla + 1) % len(self.patrulla)
             objetivo = self.patrulla[self.idx_patrulla]
         
-        # Ir al objetivo
+        # Go to target
         mejor_accion = None
         mejor_dist = float('inf')
         
@@ -252,5 +252,5 @@ class AgenteDefensivo(CaptureAgent):
         return mejor_accion if mejor_accion else random.choice(acciones)
     
     def get_successor(self, game_state, action):
-        """Helper: generar sucesor"""
+        """Helper: generate successor state"""
         return game_state.generate_successor(self.index, action)
